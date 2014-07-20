@@ -1,20 +1,97 @@
 # Reproducible Research: Peer Assessment 1
 
-
 ## Loading and preprocessing the data
-
+```{r echo=TRUE}
+raw.data <- read.csv('activity.csv', header=T, stringsAsFactors=F)
+# transform the date column to Date type
+raw.data$date <- as.Date(raw.data$date)
+# omit the missing observations
+data <- na.omit(raw.data)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r echo=TRUE}
+# Calculate total number of steps taken each day
+total.daily.steps <- aggregate(data$steps, by=list(data$date), FUN=sum)
+names(total.daily.steps) <- c("date", "steps.total")
+total.daily.steps
+# histogram of the total number of steps taken each day
+hist(total.daily.steps$steps.total)
 
+# Calculate and report the mean and median total number of steps taken per day
+mean.daily.steps <- aggregate(data$steps, by=list(data$date), FUN=mean)
+names(mean.daily.steps) <- c("date", "steps.mean")
+mean.daily.steps
+
+median.daily.steps <- aggregate(data$steps, by=list(data$date), FUN=median)
+names(median.daily.steps) <- c("date", "steps.median")
+median.daily.steps
+```
 
 
 ## What is the average daily activity pattern?
+```{r echo=TRUE}
+pattern.daily.steps <- aggregate(data$steps, by=list(data$interval), FUN=mean)
+names(pattern.daily.steps) <- c("interval", "steps.mean")
 
+# Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+plot(pattern.daily.steps$interval, pattern.daily.steps$steps.mean, type="l")
+
+# Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+pattern.daily.steps[pattern.daily.steps$steps.mean == max(pattern.daily.steps$steps.mean), "interval"]
+```
 
 
 ## Imputing missing values
+```{r echo=TRUE}
+# Total number of missing values in the dataset 
+nrow(raw.data) - nrow(data)
 
+# Use mean(converted to integer) for that 5-minute interval to fill the missing data
+index.na <- which(is.na(raw.data))
+for (i in index.na) {
+  ival <- raw.data[i,  "interval"]
+  raw.data[i,"steps"] <- as.integer(pattern.daily.steps[pattern.daily.steps$interval==ival, "steps.mean"])
+}
+
+# Recalculate values for the new data
+# Calculate total number of steps taken each day
+new.total.daily.steps <- aggregate(raw.data$steps, by=list(raw.data$date), FUN=sum)
+names(new.total.daily.steps) <- c("date", "steps.total")
+new.total.daily.steps
+# histogram of the total number of steps taken each day
+hist(new.total.daily.steps$steps.total)
+
+# Calculate and report the mean and median total number of steps taken per day
+new.mean.daily.steps <- aggregate(raw.data$steps, by=list(raw.data$date), FUN=mean)
+names(new.mean.daily.steps) <- c("date", "steps.mean")
+new.mean.daily.steps
+
+new.median.daily.steps <- aggregate(raw.data$steps, by=list(raw.data$date), FUN=median)
+names(new.median.daily.steps) <- c("date", "steps.median")
+new.median.daily.steps
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r echo=TRUE}
+raw.data$weekday <- weekdays(raw.data$date)
+raw.data[which(raw.data$weekday=="Sunday" | raw.data$weekday=="Saturday"), "weekday"] <- "weekend"
+raw.data[which(raw.data$weekday!="weekend"), "weekday"] <- "weekday"
+raw.data$weekday <- as.factor(raw.data$weekday)
+
+weekday.raw.data <- raw.data[raw.data$weekday == "weekday", ]
+weekend.raw.data <- raw.data[raw.data$weekday != "weekday", ]
+
+pattern.weekday.steps <- aggregate(weekday.raw.data$steps, by=list(weekday.raw.data$interval), FUN=mean)
+names(pattern.weekday.steps) <- c("interval", "steps.mean")
+pattern.weekend.steps <- aggregate(weekend.raw.data$steps, by=list(weekend.raw.data$interval), FUN=mean)
+names(pattern.weekend.steps) <- c("interval", "steps.mean")
+
+# Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis) for both weekday & weekend
+
+par(mfrow=c(2,1), mar=c(2,2,2,2))
+plot(pattern.weekday.steps$interval, pattern.weekday.steps$steps.mean, type="l", main="weekday")
+plot(pattern.weekend.steps$interval, pattern.weekend.steps$steps.mean, type="l", main="weekend")
+```
